@@ -1,0 +1,51 @@
+edition: 1.0.0
+name: component-test
+access: '{{ access }}'
+services:
+  cn-beijing-gpt-service-auto_score:
+    component: fc
+    props:
+      region: cn-beijing
+      service:
+        logConfig:
+          enableRequestMetrics: true
+          enableInstanceMetrics: true
+          logBeginRule: DefaultRegex
+          project: aliyun-fc-cn-beijing-41b32d87-d5dd-572e-a93a-e481f3aa452f
+          logstore: function-log
+        role: acs:ram::1408732132722571:role/AliyunFcDefaultRole
+        description: Serverless Devs Web Framework Service
+        internetAccess: true
+        ossMountConfig:
+          mountPoints: []
+        name: gpt-service
+      function:
+        handler: index.handler
+        timeout: 600
+        diskSize: 512
+        layers:
+          - acs:fc:cn-beijing:official:layers/Python3-Flask2x/versions/2
+          - acs:fc:cn-beijing:1408732132722571:layers/openai/versions/4
+        instanceType: e1
+        runtime: python3.9
+        cpu: 0.35
+        instanceConcurrency: 1
+        initializer: index.initialize
+        initializationTimeout: 3
+        memorySize: 512
+        environmentVariables: {}
+        name: auto_score
+        codeUri: ./service
+      triggers:
+        - name: defaultTrigger
+          description: ''
+          type: http
+          qualifier: LATEST
+          config:
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+            authType: anonymous
+            disableURLInternet: false
