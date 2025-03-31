@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import flask
 from flask import request, make_response
 
@@ -84,6 +85,24 @@ def send_message(user_id, message):
             f"client.im.v1.message.create failed, code: {response.code}, msg: {response.msg}, log_id: {response.get_log_id()}, resp: \n{json.dumps(json.loads(response.raw.content), indent=4, ensure_ascii=False)}")
         return
 
+def add_user_score(user_id, score):
+    request: CreateAppTableRecordRequest = CreateAppTableRecordRequest.builder() \
+        .app_token("VvAabUKgtaHjzTsFNB4cEuuAnxU") \
+        .table_id("tblwModBiyYWqwDp") \
+        .request_body(AppTableRecord.builder()
+            .fields({"分数":score, "姓名":[{"id": user_id}]})
+            .build()) \
+        .build()
+
+    # 发起请求
+    response: CreateAppTableRecordResponse = lark_client.bitable.v1.app_table_record.create(request)
+    
+    # 处理失败返回
+    if not response.success():
+        lark.logger.error(
+            f"client.bitable.v1.app_table_record.create failed, code: {response.code}, msg: {response.msg}, log_id: {response.get_log_id()}, resp: \n{json.dumps(json.loads(response.raw.content), indent=4, ensure_ascii=False)}")
+        return
+
 # Flask app should start in global layout
 app = flask.Flask(__name__)
 
@@ -108,9 +127,14 @@ def post_handler():
     scores_show = ['以下得分由AI自动评定，仅供参考：']
     for index, score in enumerate(scores):
         scores_show.append(f'第{index+1}题得分：{score}分')
-    scores_show.append(f'总分：{sum(scores)}分')
+    total_score = sum(scores)
+    scores_show.append(f'总分：{total_score}分')
 
     send_message(user_id, '\n'.join(scores_show))
+
+    if total_score >= 50:       # 大于50分才记录
+        add_user_score(user_id, total_score)
+
     return make_response("OK", 200)
 
 if __name__ == '__main__':
