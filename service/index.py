@@ -103,6 +103,49 @@ def add_user_score(user_id, score):
             f"client.bitable.v1.app_table_record.create failed, code: {response.code}, msg: {response.msg}, log_id: {response.get_log_id()}, resp: \n{json.dumps(json.loads(response.raw.content), indent=4, ensure_ascii=False)}")
         return
 
+def get_highest_score(user_id):
+    # 构造请求对象
+    request: SearchAppTableRecordRequest = SearchAppTableRecordRequest.builder() \
+        .app_token("VvAabUKgtaHjzTsFNB4cEuuAnxU") \
+        .table_id("tblwModBiyYWqwDp") \
+        .user_id_type("open_id") \
+        .page_size(20) \
+        .request_body(SearchAppTableRecordRequestBody.builder()
+            .view_id("vewyv9riz9")
+            .field_names(["分数", "姓名"])
+            .sort([Sort.builder()
+                .field_name("分数")
+                .desc(True)
+                .build()
+                ])
+            .filter(FilterInfo.builder()
+                .conjunction("and")
+                .conditions([Condition.builder()
+                    .field_name("姓名")
+                    .operator("is")
+                    .value([user_id])
+                    .build()
+                    ])
+                .build())
+            .automatic_fields(False)
+            .build()) \
+        .build()
+
+    # 发起请求
+    response: SearchAppTableRecordResponse = lark_client.bitable.v1.app_table_record.search(request)
+
+    # 处理失败返回
+    if not response.success():
+        lark.logger.error(
+            f"client.bitable.v1.app_table_record.search failed, code: {response.code}, msg: {response.msg}, log_id: {response.get_log_id()}, resp: \n{json.dumps(json.loads(response.raw.content), indent=4, ensure_ascii=False)}")
+        return
+
+    try:
+        return response.data.items[0].fields['分数']
+    except:
+        return 0
+
+
 # Flask app should start in global layout
 app = flask.Flask(__name__)
 
@@ -130,10 +173,15 @@ def post_handler():
     total_score = sum(scores)
     scores_show.append(f'总分：{total_score}分')
 
-    send_message(user_id, '\n'.join(scores_show))
-
-    if total_score >= 50:       # 大于50分才记录
+    if total_score >= 30:       # 大于30分才记录
         add_user_score(user_id, total_score)
+
+        # 同样，大于30分才报告最高分
+        highest_score = get_highest_score(user_id)
+        if highest_score > 0:
+            scores_show.append(f'您获得过的最高分是：{highest_score}分')
+
+    send_message(user_id, '\n'.join(scores_show))
 
     return make_response("OK", 200)
 
