@@ -44,12 +44,20 @@ def get_score(question, answer, prompt, max_score):
         )
     
     output = response.choices[0].message.content
-    # 从output中提取```json和```之间的内容
-    start = output.find("```")
-    start = output.find("\n", start)
-    end = output.find("```", start+1)
-    output = output[start:end]
-    response_json = json.loads(output)
+
+    try:
+        #先试试直接load json
+        response_json = json.loads(output)
+    except:
+        # 如果不行，再掐头去尾
+        print(output)
+
+        # 从output中提取```json和```之间的内容
+        start = output.find("```")
+        start = output.find("\n", start)
+        end = output.find("```", start+1)
+        output = output[start:end]
+        response_json = json.loads(output)
 
     print(response_json)
     return response_json['score']
@@ -83,7 +91,7 @@ def auto_score(record_data):
                 if isinstance(score, int):
                     scores[i] = min(score, max_score)
         except Exception as e:
-            print(e)
+            print("Exception: ", e)
     print(scores)
     return scores
 
